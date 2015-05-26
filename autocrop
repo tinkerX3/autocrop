@@ -4,6 +4,7 @@ import argparse
 import re
 
 from PIL import Image
+from PIL import ImageFilter
 import numpy as np
 
 from skimage.filter.rank import entropy as _entropy
@@ -11,6 +12,12 @@ from skimage.morphology import disk
 from skimage.util import img_as_ubyte
 
 HELP_MSG = "Invalid input '{}', see --help for usage error."
+
+SUMMATION_KERNEL_SIZE = 50
+ENTROPY_MEAN_THRESHOLD1 = 5
+ENTROPY_MEAN_THRESHOLD2 = 4
+ENTROPY_STD_THRESHOLD = 0.8
+
 
 def _valid_numbers(values):
     try: return [int(i) for i in re.compile(r'\d+').findall(values)]
@@ -43,9 +50,9 @@ def _valid_output(filepath):
 def readjust_rect(featured, size):
     x1, y1, x2, y2 = featured
     width, height = size
-    def _clip(x1, x2, size):
-        return (max(0, x1 + (size - max(size, x2))),
-                min(x2 - min(0, x1), size))
+    def _clip(v1, v2, size):
+        return (max(0, v1 + (size - max(size, v2))),
+                min(v2 - min(0, v1), size))
     x1, x2 = _clip(x1, x2, width)
     y1, y2 = _clip(y1, y2, height)
     return x1, y1, x2, y2
@@ -70,10 +77,22 @@ def ubyte(im):
 def entropy(A, disk_size=5):
     return _entropy(A, disk(disk_size))
 
-def kernel_size(width, height):
-    return min(width//10, height//10)
+def blur(im, radius=5):
+    return im.filter(ImageFilter.GaussianBlur(radius))
 
-def convolve(A, kernel_size=100):
+def choose_entropy(im):
+    A = np.array(grayscale(im))
+    H = entropy(A)
+    if (H.mean() > ENTROPY_MEAN_THRESHOLD1 or
+        H.mean() > ENTROPY_MEAN_THRESHOLD2 and
+        H.std() < ENTROPY_STD_THRESHOLD):
+        print('Blured lines')
+        return entropy(np.array(grayscale(blur(im))))
+    else:
+        return H
+
+
+def convolve(A, kernel_size=SUMMATION_KERNEL_SIZE):
     kernel = np.ones(kernel_size)
 
     def _conv(A):
@@ -81,14 +100,10 @@ def convolve(A, kernel_size=100):
 
     return _conv(_conv(A))
 
-def kernel_size(im, width, height):
-    return min(im.shape[0], im.shape[1], width, height)
 
-def find_nth_value(A, n=-1):
-    sorted_value = np.sort(A, axis=None)[n]
-    where = np.where(A == sorted_value)
-    nth = (where[0][0], where[1][0])
-    return nth
+def max_position(A):
+    """Return indices where A has maximum value."""
+    return np.unravel_index(A.argmax(), A.shape)
 
 def main():
     parser = argparse.ArgumentParser(description="Image cropper.")
@@ -99,7 +114,7 @@ def main():
                         metavar="X1,Y1,X2,Y2",
                         help=("coordinates of the important part of the image;"
                               "X1 < X2, Y1 < Y2; (0,0) = top-left corner"))
-    parser.add_argument("-i", "--inputfile", type=_valid_input,
+    parser.add_argument("-i", "--input", type=_valid_input,
                         metavar="FILE",
                         help="path to the original image")
     parser.add_argument("-o", "--output", type=_valid_output,
@@ -109,34 +124,18 @@ def main():
 
     print(args)
 
-    inputfile = args.inputfile
-    outputfile = args.output
-    outputsize = args.size
-    featured = args.featured
+    im_orig = Image.open(args.input)
 
-    im_orig = Image.open(inputfile)
-
-    if featured:
-        rect = center_rect(featured, outputsize)
-        print('rect1:', rect)
-        print('im_size: ', im_orig.size)
+    if args.featured:
+        rect = center_rect(args.featured, args.size)
         rect = readjust_rect(rect, im_orig.size)
-        print('rect2:', rect)
-        crop_image(im_orig, outputfile, rect)
+        crop_image(im_orig, args.output, rect)
     else:
-        gray = grayscale(im_orig)
-        A = ubyte(np.array(gray))
-        H = entropy(A)
-        HC = convolve(H, 50)
-        i,j = find_nth_value(HC)
-        width, height = outputsize
-        width = width // 2
-        height = height // 2
-        x1, x2 = i-width, i+width
-        y1, y2 = j-height, j+height
-        box = (x1, y1, x2, y2)
-        box = center_box(box, im_orig.size)
-
-        crop_image(im_orig, outputfile, box)
+        H = choose_entropy(im_orig)
+        HC = convolve(H)
+        i, j = max_position(HC)
+        rect = center_rect((j, i, j, i), args.size)
+        rect = readjust_rect(rect, im_orig.size)
+        crop_image(im_orig, args.output, rect)
 if __name__ == '__main__':
     main()
