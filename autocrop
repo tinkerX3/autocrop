@@ -4,6 +4,11 @@ import argparse
 import re
 
 from PIL import Image
+import numpy as np
+
+from skimage.filter.rank import entropy as _entropy
+from skimage.morphology import disk
+from skimage.util import img_as_ubyte
 
 HELP_MSG = "Invalid input '{}', see --help for usage error."
 
@@ -13,11 +18,11 @@ def _valid_numbers(values):
         raise argparse.ArgumentTypeError(HELP_MSG.format(values))
 
 def _valid_size(values):
-    width, height = _valid_numbers(values) 
+    width, height = _valid_numbers(values)
     if not width > 0 < height:
         sys.exit(HELP_MSG.format(values))
     return _valid_numbers(values)
-    
+
 def _valid_featured(values):
     x1, y1, x2, y2 = _valid_numbers(values)
     if not x1 < x2 and y1 < y2:
@@ -35,26 +40,55 @@ def _valid_output(filepath):
         sys.exit(HELP_MSG.format(filepath))
     return filepath
 
-def _valid_box(size, featured):
-    four_sides = 4
-    x_size, y_size = size
+def readjust_rect(featured, size):
     x1, y1, x2, y2 = featured
-    x_featured = abs(x1 - x2)
-    y_featured = abs(y1 - y2)
-    if x_size > x_featured:
-        x1 -= int(x_size / four_sides)
-        x2 += int(x_size / four_sides)
-    if y_size > x_featured:
-        y1 -= int(y_featured / four_sides)
-        y2 += int(y_featured / four_sides)
-    return [x1, y1, x2, y2]
+    width, height = size
+    def _clip(x1, x2, size):
+        return (max(0, x1 + (size - max(size, x2))),
+                min(x2 - min(0, x1), size))
+    x1, x2 = _clip(x1, x2, width)
+    y1, y2 = _clip(y1, y2, height)
+    return x1, y1, x2, y2
 
-def crop_image(inputfile, outputfile, size, featured):
-    im = Image.open(inputfile)
-    box = _valid_box(size, featured)
-    region = im.crop(box)
+def center_rect(featured, size):
+    x1, y1, x2, y2 = featured
+    width, height = size
+    dx = abs(x2 - x1 - width) // 2
+    dy = abs(y2 - y1 - height) // 2
+    return x1 - dx, y1 - dy, x2 + dx, y2 + dy
+
+def crop_image(image, outputfile, box):
+    region = image.crop(box)
     region.save(outputfile)
-    return True
+
+def grayscale(im):
+    return im.convert('L')
+
+def ubyte(im):
+    return img_as_ubyte(im)
+
+def entropy(A, disk_size=5):
+    return _entropy(A, disk(disk_size))
+
+def kernel_size(width, height):
+    return min(width//10, height//10)
+
+def convolve(A, kernel_size=100):
+    kernel = np.ones(kernel_size)
+
+    def _conv(A):
+        return np.convolve(A.ravel(), kernel, mode='same').reshape(A.shape).T
+
+    return _conv(_conv(A))
+
+def kernel_size(im, width, height):
+    return min(im.shape[0], im.shape[1], width, height)
+
+def find_nth_value(A, n=-1):
+    sorted_value = np.sort(A, axis=None)[n]
+    where = np.where(A == sorted_value)
+    nth = (where[0][0], where[1][0])
+    return nth
 
 def main():
     parser = argparse.ArgumentParser(description="Image cropper.")
@@ -75,7 +109,34 @@ def main():
 
     print(args)
 
-    crop_image(args.inputfile, args.output, args.size, args.featured)
+    inputfile = args.inputfile
+    outputfile = args.output
+    outputsize = args.size
+    featured = args.featured
 
+    im_orig = Image.open(inputfile)
+
+    if featured:
+        rect = center_rect(featured, outputsize)
+        print('rect1:', rect)
+        print('im_size: ', im_orig.size)
+        rect = readjust_rect(rect, im_orig.size)
+        print('rect2:', rect)
+        crop_image(im_orig, outputfile, rect)
+    else:
+        gray = grayscale(im_orig)
+        A = ubyte(np.array(gray))
+        H = entropy(A)
+        HC = convolve(H, 50)
+        i,j = find_nth_value(HC)
+        width, height = outputsize
+        width = width // 2
+        height = height // 2
+        x1, x2 = i-width, i+width
+        y1, y2 = j-height, j+height
+        box = (x1, y1, x2, y2)
+        box = center_box(box, im_orig.size)
+
+        crop_image(im_orig, outputfile, box)
 if __name__ == '__main__':
     main()
