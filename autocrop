@@ -77,7 +77,7 @@ def ubyte(im):
 def entropy(A, disk_size=5):
     return _entropy(A, disk(disk_size))
 
-def blur(im, radius=5):
+def blur(im, radius=10):
     return im.filter(ImageFilter.GaussianBlur(radius))
 
 def choose_entropy(im):
@@ -105,6 +105,41 @@ def max_position(A):
     """Return indices where A has maximum value."""
     return np.unravel_index(A.argmax(), A.shape)
 
+
+def optimal_output_rect(A, thresh_std=1.6):
+    SAME_INTERVAL_DISTANCE = 30
+    B = A.copy()
+    B[B < B.mean() + thresh_std*B.std()] = 0
+
+    def _optimal_interval(axis_sum):
+        indexes = axis_sum.nonzero()[0]
+        prev = start = indexes[0]
+        intervals = []
+        for i in indexes:
+            if i - prev > SAME_INTERVAL_DISTANCE:
+                intervals.append((start, prev))
+                start = i
+            prev = i
+        intervals.append((start, prev))
+        # ...
+        def _range(interval):
+            return interval[1] - interval[0]
+        intervals.sort(key=_range, reverse=True)
+        # ...
+        for i in range(len(intervals) - 1):
+            if _range(intervals[i]) / _range(intervals[i+1]) > 1.25:  # TODO
+                break
+        intervals = intervals[:i + 1]
+        # ...
+        intervals.sort(key=lambda i: axis_sum[i[0]:i[1] + 1].sum(), reverse=True)
+        return intervals[0]
+
+    x1, x2 = _optimal_interval(B.sum(0))
+    y1, y2 = _optimal_interval(B.sum(1))
+    margin = (.1 * np.array(A.shape)).astype(int)
+    return x1 - margin[0], y1 - margin[1], x2 + margin[0], y2 + margin[1]
+
+
 def main():
     parser = argparse.ArgumentParser(description="Image cropper.")
     parser.add_argument("-s", "--size", type=_valid_size,
@@ -126,6 +161,7 @@ def main():
 
     im_orig = Image.open(args.input)
 
+
     if args.featured:
         rect = center_rect(args.featured, args.size)
         rect = readjust_rect(rect, im_orig.size)
@@ -134,7 +170,10 @@ def main():
         H = choose_entropy(im_orig)
         HC = convolve(H)
         i, j = max_position(HC)
-        rect = center_rect((j, i, j, i), args.size)
+        if args.size:
+            rect = center_rect((j, i, j, i), args.size)
+        else:
+            rect = optimal_output_rect(HC)
         rect = readjust_rect(rect, im_orig.size)
         crop_image(im_orig, args.output, rect)
 if __name__ == '__main__':
