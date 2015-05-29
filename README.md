@@ -3,7 +3,7 @@ autocrop
 
 Image auto-cropper. This is [how it works][how].
 
-[how]: http://nbviewer.ipython.org/github/tinkerx3/autocrop/doc/autoctrop.ipynb
+[how]: http://nbviewer.ipython.org/github/tinkerX3/autocrop/blob/master/doc/autocrop.ipynb
 
 Dependencies
 ------------
