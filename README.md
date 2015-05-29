@@ -1,7 +1,9 @@
 autocrop
 ========
 
-Image auto-cropper.
+Image auto-cropper. This is [how it works][how].
+
+[how]: http://nbviewer.ipython.org/github/tinkerx3/autocrop/doc/autoctrop.ipynb
 
 Dependencies
 ------------
