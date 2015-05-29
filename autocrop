@@ -24,11 +24,13 @@ def _valid_numbers(values):
     except ValueError:
         raise argparse.ArgumentTypeError(HELP_MSG.format(values))
 
+
 def _valid_size(values):
     width, height = _valid_numbers(values)
     if not width > 0 < height:
         sys.exit(HELP_MSG.format(values))
     return _valid_numbers(values)
+
 
 def _valid_featured(values):
     x1, y1, x2, y2 = _valid_numbers(values)
@@ -36,10 +38,12 @@ def _valid_featured(values):
         sys.exit(HELP_MSG.format(values))
     return _valid_numbers(values)
 
-def _valid_input(filepath):
-    if not os.path.isfile(filepath):
-        sys.exit(HELP_MSG.format(filepath))
-    return filepath
+
+#def _valid_input(filepath):
+#    if not os.path.isfile(filepath):
+#        sys.exit("File '{}' doesn't exist".format(filepath))
+#    return filepath
+
 
 def _valid_output(filepath):
     p, f = os.path.split(filepath)
@@ -47,7 +51,22 @@ def _valid_output(filepath):
         sys.exit(HELP_MSG.format(filepath))
     return filepath
 
+
+def center_rect(featured, size):
+    """Return a tuple of cropping rect coordinates (x1, y1, x2, y2)"""
+    x1, y1, x2, y2 = featured
+    width, height = size
+    dx = abs(x2 - x1 - width) // 2
+    dy = abs(y2 - y1 - height) // 2
+    return x1 - dx, y1 - dy, x2 + dx, y2 + dy
+
+
 def readjust_rect(featured, size):
+    """
+    If rect is outside the bounds of an image, clip the rect in the
+    appropriate places and return a tuple with new coordinates
+    (x1, y1, x2, y2)
+    """
     x1, y1, x2, y2 = featured
     width, height = size
     def _clip(v1, v2, size):
@@ -57,30 +76,39 @@ def readjust_rect(featured, size):
     y1, y2 = _clip(y1, y2, height)
     return x1, y1, x2, y2
 
-def center_rect(featured, size):
-    x1, y1, x2, y2 = featured
-    width, height = size
-    dx = abs(x2 - x1 - width) // 2
-    dy = abs(y2 - y1 - height) // 2
-    return x1 - dx, y1 - dy, x2 + dx, y2 + dy
 
 def crop_image(image, outputfile, box):
+    """Crop and save an image in a file"""
     region = image.crop(box)
     region.save(outputfile)
 
+
 def grayscale(im):
+    """Conver an image to a grayscale"""
     return im.convert('L')
 
+
 def ubyte(im):
+    """Convert an image to 8-bit unsigned integer format."""
     return img_as_ubyte(im)
 
+
 def entropy(A, disk_size=5):
+    """
+    Returns the entropy [1]_ computed locally. Entropy is computed using
+    base 2 logarithm i.e. the filter returns the minimum number of bits
+    needed to encode local greylevel distribution.
+    """
     return _entropy(A, disk(disk_size))
 
+
 def blur(im, radius=10):
+    """Gaussian blur filter"""
     return im.filter(ImageFilter.GaussianBlur(radius))
 
+
 def choose_entropy(im):
+    """ Choose an appropriate entropy based on the thresholds"""
     A = np.array(grayscale(im))
     H = entropy(A)
     if (H.mean() > ENTROPY_MEAN_THRESHOLD1 or
@@ -93,6 +121,9 @@ def choose_entropy(im):
 
 
 def convolve(A, kernel_size=SUMMATION_KERNEL_SIZE):
+    """
+    Return convolved value by sliding a kernel through an array.
+    """
     kernel = np.ones(kernel_size)
 
     def _conv(A):
@@ -141,7 +172,7 @@ def optimal_output_rect(A, thresh_std=1.6):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Image cropper.")
+    parser = argparse.ArgumentParser(description="Image auto-cropper")
     parser.add_argument("-s", "--size", type=_valid_size,
                         metavar="WxH",
                         help="ouput image size")
@@ -149,12 +180,12 @@ def main():
                         metavar="X1,Y1,X2,Y2",
                         help=("coordinates of the important part of the image;"
                               "X1 < X2, Y1 < Y2; (0,0) = top-left corner"))
-    parser.add_argument("-i", "--input", type=_valid_input,
+    parser.add_argument("-i", "--input", # type=_valid_input,
                         metavar="FILE",
-                        help="path to the original image")
+                        help="path/to/image")
     parser.add_argument("-o", "--output", type=_valid_output,
                         metavar="FILE",
-                        help="path to the output image")
+                        help="path/to/output")
     args = parser.parse_args()
 
     print(args)
