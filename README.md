@@ -7,12 +7,16 @@ Image auto-cropper. This is [how it works][how].
 
 Dependencies
 ------------
-
-* scipy
+* Python 3
 * numpy
 * scikit-image
 * Pillow
 
+On a debian based distro:
+
+```bash
+sudo apt-get install python3-numpy python3-pil python3-skimage
+```ta
 
 Algorithm for content aware cropping
 ------------------------------------
@@ -47,8 +51,8 @@ optional arguments:
   -h, --help            show this help message and exit
   -s W,H, --size W,H    ouput image size
   -f X1,Y1,X2,Y2, --featured X1,Y1,X2,Y2
-                        coordinates of the important part of the image;X1 <
-                        X2, Y1 < Y2; (0,0) = top-left corner
+                        coordinates of the important part of the image;
+                        X1<X2, Y1<Y2; (0,0) = top-left corner
   -i FILE, --input FILE
                         path/to/the/input/image
   -o FILE, --output FILE
