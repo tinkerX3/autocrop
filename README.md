@@ -39,6 +39,13 @@ Installation
 pip install git+https://github.com/tinkerX3/autocrop
 ```
 
+or
+
+```bash
+git clone https://github.com:tinkerX3/autocrop.git
+python3 setup.py develop  # this still is beta!
+```
+
 Usage
 -----
 
