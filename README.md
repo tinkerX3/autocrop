@@ -16,7 +16,7 @@ On a debian based distro:
 
 ```bash
 sudo apt-get install python3-numpy python3-pil python3-skimage
-```ta
+```
 
 Algorithm for content aware cropping
 ------------------------------------
@@ -42,7 +42,7 @@ pip install git+https://github.com/tinkerX3/autocrop
 or
 
 ```bash
-git clone https://github.com:tinkerX3/autocrop.git
+git clone https://github.com/tinkerX3/autocrop.git
 python3 setup.py develop  # this still is beta!
 ```
 
