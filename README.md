@@ -77,6 +77,13 @@ $ ./autocrop --size 500x500 \
              --output path/to/output.png
 ```
 
+Crop image to size of the featured rectangle:
+```bash
+$ ./autocrop --featured 250x100x650x500 \
+             --input path/to/image.png \
+             --output path/to/output.png
+```
+
 Crop image to provided size by automatically determining the most
 important features.
 ```bash
