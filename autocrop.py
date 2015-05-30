@@ -46,8 +46,8 @@ def _valid_featured(values):
 
 
 def _valid_output(filepath):
-    p, f = os.path.split(filepath)
-    if not os.path.exists(p):
+    dir, file = os.path.split(filepath)
+    if dir and not os.path.exists(dir):
         sys.exit(HELP_MSG.format(filepath))
     return filepath
 
