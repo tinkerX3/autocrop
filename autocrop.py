@@ -191,11 +191,10 @@ def main():
     #print(args)
 
     im_orig = Image.open(args.input)
-    x1, y1, x2, y2 = args.featured
-
 
     if args.featured:
-        args.size = (x2-x1, y2-y1)
+        x1, y1, x2, y2 = args.featured
+        args.size = args.size or (x2-x1, y2-y1)
         rect = center_rect(args.featured, args.size)
         rect = readjust_rect(rect, im_orig.size)
         crop_image(im_orig, args.output, rect)
