@@ -190,6 +190,10 @@ def main():
 
     #print(args)
 
+    if not len(sys.argv) > 1:
+        parser.print_help()
+        sys.exit(1)
+
     im_orig = Image.open(args.input)
 
     if args.featured:
