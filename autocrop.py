@@ -53,11 +53,11 @@ def _valid_output(filepath):
 
 
 def center_rect(featured, size):
-    """Return a tuple of cropping rect coordinates (x1, y1, x2, y2)"""
+    """Return a tuple of cropping rect coordinates (x1, y1, x2, y2)."""
     x1, y1, x2, y2 = featured
     width, height = size
-    dx = abs(x2 - x1 - width) // 2
-    dy = abs(y2 - y1 - height) // 2
+    dx = abs(min(x2 - x1 - width, 0)) // 2
+    dy = abs(min(y2 - y1 - height, 0)) // 2
     return x1 - dx, y1 - dy, x2 + dx, y2 + dy
 
 
@@ -65,7 +65,7 @@ def readjust_rect(featured, size):
     """
     If rect is outside the bounds of an image, clip the rect in the
     appropriate places and return a tuple with new coordinates
-    (x1, y1, x2, y2)
+    (x1, y1, x2, y2).
     """
     x1, y1, x2, y2 = featured
     width, height = size
@@ -78,13 +78,13 @@ def readjust_rect(featured, size):
 
 
 def crop_image(image, outputfile, box):
-    """Crop and save an image in a file"""
+    """Crop and save an image in a file."""
     region = image.crop(box)
     region.save(outputfile)
 
 
 def grayscale(im):
-    """Conver an image to a grayscale"""
+    """Conver an image to a grayscale."""
     return im.convert('L')
 
 
@@ -103,12 +103,12 @@ def entropy(A, disk_size=5):
 
 
 def blur(im, radius=10):
-    """Gaussian blur filter"""
+    """Gaussian blur filter."""
     return im.filter(ImageFilter.GaussianBlur(radius))
 
 
 def choose_entropy(im):
-    """ Choose an appropriate entropy based on the thresholds"""
+    """ Choose an appropriate entropy based on the thresholds."""
     A = np.array(grayscale(im))
     H = entropy(A)
     if (H.mean() > ENTROPY_MEAN_THRESHOLD1 or
