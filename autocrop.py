@@ -114,7 +114,7 @@ def choose_entropy(im):
     if (H.mean() > ENTROPY_MEAN_THRESHOLD1 or
         H.mean() > ENTROPY_MEAN_THRESHOLD2 and
         H.std() < ENTROPY_STD_THRESHOLD):
-        print('Blured lines')
+        #print('Blured lines')
         return entropy(np.array(grayscale(blur(im))))
     else:
         return H
@@ -122,7 +122,7 @@ def choose_entropy(im):
 
 def convolve(A, kernel_size=SUMMATION_KERNEL_SIZE):
     """
-    Return convolved value by sliding a kernel through an array.
+    Return convolved value by sliding a kernel of ones through an array.
     """
     kernel = np.ones(kernel_size)
 
@@ -138,7 +138,9 @@ def max_position(A):
 
 
 def optimal_output_rect(A, thresh_std=1.6):
+    """Return a rect when no output size is given."""
     SAME_INTERVAL_DISTANCE = 30
+    INTERVAL_DISTANCE_COEFFICIENT = 1.25
     B = A.copy()
     B[B < B.mean() + thresh_std*B.std()] = 0
 
@@ -152,16 +154,19 @@ def optimal_output_rect(A, thresh_std=1.6):
                 start = i
             prev = i
         intervals.append((start, prev))
-        # ...
+
+        # Return difference of indices [1] - [0].
+        # Can also be used as a sort function.
         def _range(interval):
             return interval[1] - interval[0]
         intervals.sort(key=_range, reverse=True)
-        # ...
+
+        # Check when intervals are too far apart.
         for i in range(len(intervals) - 1):
-            if _range(intervals[i]) / _range(intervals[i+1]) > 1.25:  # TODO
+            if _range(intervals[i]) / _range(intervals[i+1]) > INTERVAL_DISTANCE_COEFFICIENT:
                 break
         intervals = intervals[:i + 1]
-        # ...
+        # Sort by highest value in a summed axis.
         intervals.sort(key=lambda i: axis_sum[i[0]:i[1] + 1].sum(), reverse=True)
         return intervals[0]
 
